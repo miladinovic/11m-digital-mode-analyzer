@@ -6,7 +6,7 @@
 <div class="eyebrow">PSK Reporter · 11-metre band</div><h1>11m Digital Mode Analyzer</h1><p class="subtitle">CB Digital Mode Activity</p>
 <nav class="periods" aria-label="Time window" id="periods"></nav><div class="status" id="status" role="status">Loading latest reception reports…</div>
 <section class="metrics"><div class="card"><span>Reception reports</span><strong id="total">—</strong></div><div class="card"><span>Digital modes</span><strong id="modes">—</strong></div><div class="card"><span>Active channels</span><strong id="channels">—</strong></div><div class="card"><span>Latest report</span><strong id="latest">—</strong></div></section>
-<section class="panel"><h2>Reports by hour</h2><p class="muted" id="hourDescription">Total reception reports by local hour (00:00–23:00) for the selected period.</p><div class="hour-chart-wrap"><div id="hourChart" class="hour-chart" role="img" aria-label="Reception reports by hour"></div></div></section>
+<section class="panel"><h2>Reports by hour</h2><p class="muted" id="hourDescription">All digital modes combined · rolling last 24 hours · local time (00:00–23:00).</p><div class="hour-chart-wrap"><div id="hourChart" class="hour-chart" role="img" aria-label="Reception reports by hour"></div></div></section>
 <section class="panel"><h2>Mode activity</h2><div id="bars"></div></section>
 <section class="panel"><h2>Digital mode statistics</h2><table><thead><tr><th>Mode</th><th class="num">Reports</th><th class="num">Share</th><th class="num">Last heard</th></tr></thead><tbody id="modeRows"></tbody></table></section>
 <section class="panel"><h2>Frequency activity by mode</h2><table><thead><tr><th>Mode</th><th>USB channel</th><th class="num">Reports</th><th class="num">Mode share</th><th class="num">Last heard</th></tr></thead><tbody id="freqRows"></tbody></table></section>
@@ -27,7 +27,7 @@ function render(){
  if(!snapshot)return;
  const now=Math.floor(Date.now()/1000), reports=snapshot.reports.filter(r=>Number.isFinite(r.t)&&r.t>=now-selected&&r.t<=now+60);
  const modes=new Map(),freq=new Map();let latest=0;
- const hourly=Array(24).fill(0);for(const r of reports)hourly[new Date(r.t*1000).getHours()]++;
+ const hourly=Array(24).fill(0);for(const r of snapshot.reports){if(Number.isFinite(r.t)&&r.t>=now-86400&&r.t<=now+60)hourly[new Date(r.t*1000).getHours()]++;}
  const hourChart=$('hourChart');hourChart.replaceChildren();const maxHour=Math.max(1,...hourly);
  hourly.forEach((count,h)=>{const slot=document.createElement('div');slot.className='hour-slot';const bar=document.createElement('div');bar.className='hour-bar';bar.style.height=`${count/maxHour*100}%`;const label=document.createElement('span');label.className='hour-label';label.textContent=String(h).padStart(2,'0');slot.title=`${String(h).padStart(2,'0')}:00–${String((h+1)%24).padStart(2,'0')}:00 · ${fmt(count)} reports`;slot.append(bar,label);hourChart.appendChild(slot);});
  hourChart.setAttribute('aria-label',`Reception reports by local hour: ${hourly.map((n,h)=>`${h}:00 ${n}`).join(', ')}`);
