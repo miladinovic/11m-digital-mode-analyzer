@@ -2,11 +2,13 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>11m Digital Mode Analyzer</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6edf7;background:#0b1220}*{box-sizing:border-box}body{margin:0}main{max-width:1160px;margin:auto;padding:34px 20px 70px}h1{font-size:clamp(1.9rem,4vw,3rem);margin:0 0 6px;letter-spacing:-.04em}h2{font-size:1.1rem;margin:0 0 18px}p{color:#a9b8cd}.eyebrow{color:#57d9c2;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;font-weight:700}.subtitle{margin:0 0 26px}.periods{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.periods button{border:1px solid #34445e;background:#162338;color:#d6e3f4;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:650}.periods button.active{background:#48d4bd;color:#062c29;border-color:#48d4bd}.status{min-height:26px;color:#a9b8cd;margin-bottom:15px;font-size:.89rem}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.card,.panel{background:#121e31;border:1px solid #283a54;border-radius:15px}.card{padding:19px}.card span{font-size:.83rem;color:#a9b8cd}.card strong{display:block;font-size:1.8rem;margin-top:9px}.panel{padding:22px;margin-bottom:18px;overflow:auto}.hour-chart{display:grid;grid-template-columns:repeat(24,minmax(25px,1fr));gap:5px;align-items:end;height:230px;padding:20px 0 26px;border-bottom:1px solid #34445e}.hour-slot{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0}.hour-bar{width:min(100%,24px);min-height:0;background:linear-gradient(0deg,#3a9cdb,#4fe0bd);border-radius:4px 4px 0 0}.hour-label{position:absolute;top:calc(100% + 7px);font-size:.66rem;color:#a9b8cd;white-space:nowrap}.hour-slot:hover .hour-bar{filter:brightness(1.25)}.hour-chart-wrap{overflow-x:auto;padding-bottom:12px}.hour-chart{min-width:650px}.barrow{display:grid;grid-template-columns:120px 1fr 75px;gap:12px;align-items:center;margin:12px 0}.track{height:13px;background:#26374f;border-radius:20px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#3a9cdb,#4fe0bd);border-radius:20px}.barrow b{text-align:right}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;font-size:.77rem;color:#a9b8cd;text-transform:uppercase;letter-spacing:.06em}td,th{padding:12px 11px;border-bottom:1px solid #293950}td.num,th.num{text-align:right}tr:last-child td{border-bottom:0}.muted{color:#a9b8cd}.empty{padding:20px;color:#a9b8cd}.note{font-size:.82rem;line-height:1.6}footer{font-size:.8rem;color:#8fa2bd;margin-top:25px}@media(max-width:750px){.metrics{grid-template-columns:repeat(2,1fr)}.barrow{grid-template-columns:70px 1fr 55px}.panel{padding:15px}}@media(max-width:420px){.metrics{grid-template-columns:1fr 1fr}.card{padding:12px}.card strong{font-size:1.35rem}}
-</style></head><body><main>
+ .daily-chart{width:100%;height:auto;display:block;min-height:210px}.daily-controls{margin:12px 0}.daily-axis{font-size:11px;fill:#a9b8cd}.daily-line{fill:none;stroke:#4fe0bd;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.daily-dot{fill:#4fe0bd}.daily-grid{stroke:#34445e;stroke-width:1}.protocol-legend{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.protocol-legend button{border:1px solid #34445e;background:#162338;color:#e6edf7;padding:7px 11px;border-radius:8px;cursor:pointer}.protocol-legend button.off{opacity:.38}.legend-swatch{display:inline-block;width:12px;height:4px;vertical-align:middle;margin-right:7px;border-radius:2px}.daily-summary{font-size:.86rem;color:#a9b8cd;margin:10px 0 0} </style></head><body><main>
 <div class="eyebrow">PSK Reporter · 11-metre band</div><h1>11m Digital Mode Analyzer</h1><p class="subtitle">CB Digital Mode Activity</p>
 <nav class="periods" aria-label="Time window" id="periods"></nav><div class="status" id="status" role="status">Loading latest reception reports…</div>
 <section class="metrics"><div class="card"><span>Reception reports</span><strong id="total">—</strong></div><div class="card"><span>Digital modes</span><strong id="modes">—</strong></div><div class="card"><span>Active channels</span><strong id="channels">—</strong></div><div class="card"><span>Latest report</span><strong id="latest">—</strong></div></section>
 <section class="panel"><h2>Reports by hour</h2><p class="muted" id="hourDescription">All digital modes combined · rolling last 24 hours · local time (00:00–23:00).</p><div class="hour-chart-wrap"><div id="hourChart" class="hour-chart" role="img" aria-label="Reception reports by hour"></div></div></section>
+<section class="panel"><h2>Total reports by day</h2><p class="muted">All digital modes combined · UTC calendar days · independent of the activity filter.</p><nav class="periods daily-controls" id="dailyPeriods" aria-label="Daily history range"></nav><div id="dailyChart" role="img" aria-label="Daily reception report totals"></div><p class="daily-summary" id="dailySummary">Loading daily history…</p></section>
+<section class="panel"><h2>Top 5 protocols by day</h2><p class="muted">Five most reported protocols across the selected historical period · UTC days · shares the date selector above.</p><div id="protocolLegend" class="protocol-legend" aria-label="Toggle protocol lines"></div><div id="protocolChart" role="img" aria-label="Daily reports for the top five protocols"></div><p class="daily-summary" id="protocolSummary">Loading protocol history…</p></section>
 <section class="panel"><h2>Mode activity</h2><div id="bars"></div></section>
 <section class="panel"><h2>Digital mode statistics</h2><table><thead><tr><th>Mode</th><th class="num">Reports</th><th class="num">Share</th><th class="num">Last heard</th></tr></thead><tbody id="modeRows"></tbody></table></section>
 <section class="panel"><h2>Frequency activity by mode</h2><table><thead><tr><th>Mode</th><th>USB channel</th><th class="num">Reports</th><th class="num">Mode share</th><th class="num">Last heard</th></tr></thead><tbody id="freqRows"></tbody></table></section>
@@ -14,7 +16,7 @@
 </main><script>
 'use strict';
 const WINDOWS=[['5 min',300],['15 min',900],['30 min',1800],['1 h',3600],['3 h',10800],['6 h',21600],['12 h',43200],['24 h',86400]];
-let selected=300,snapshot=null;
+let selected=300,snapshot=null,dailyData=null,dailySelected=30,hiddenProtocols=new Set();
 const $=id=>document.getElementById(id);
 const fmt=n=>n.toLocaleString();
 const pct=(n,d)=>d?`${(100*n/d).toFixed(2)}%`:'0.00%';
@@ -47,7 +49,85 @@ function render(){
  for(const v of [...freq.values()].sort((a,b)=>b.count-a.count||a.mode.localeCompare(b.mode)||a.channel-b.channel)){
  row($('freqRows'),[[v.mode,''],[(v.channel/1e6).toFixed(3)+' MHz',''],[fmt(v.count),'num'],[pct(v.count,modes.get(v.mode).count),'num'],[ago(v.last),'num']]);}
 }
+const DAILY_WINDOWS=[['7 days',7],['15 days',15],['30 days',30],['All data',0]];
+function renderDaily(){
+ const host=$('dailyChart');host.replaceChildren();
+ document.querySelectorAll('#dailyPeriods button').forEach(b=>{b.classList.toggle('active',+b.dataset.days===dailySelected);b.setAttribute('aria-pressed',String(+b.dataset.days===dailySelected));});
+ if(!dailyData){$('dailySummary').textContent='Daily history not available yet.';renderProtocols();return;}
+ const today=new Date().toISOString().slice(0,10);
+ const days=Object.keys(dailyData.days||{}).sort();
+ const earliest=days[0]||today;
+ const from=dailySelected?new Date(Date.now()-(dailySelected-1)*86400000).toISOString().slice(0,10):earliest;
+ const rows=[];
+ for(let d=new Date(from+'T00:00:00Z'),end=new Date(today+'T00:00:00Z');d<=end;d.setUTCDate(d.getUTCDate()+1)){
+  const date=d.toISOString().slice(0,10);rows.push({date,count:Number(dailyData.days[date]||0)});
+ }
+ if(!rows.length){$('dailySummary').textContent='No daily history available.';return;}
+ const w=940,h=270,left=58,right=18,top=16,bottom=47,pw=w-left-right,ph=h-top-bottom;
+ const max=Math.max(1,...rows.map(r=>r.count));const x=i=>left+(rows.length===1?pw/2:i*pw/(rows.length-1));const y=n=>top+ph-n/max*ph;
+ const ns='http://www.w3.org/2000/svg';const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('class','daily-chart');
+ const el=(tag,attrs={},content)=>{let node=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))node.setAttribute(k,v);if(content!==undefined)node.textContent=content;svg.appendChild(node);return node;};
+ for(let i=0;i<=4;i++){let val=max*i/4,Y=y(val);el('line',{x1:left,y1:Y,x2:w-right,y2:Y,class:'daily-grid'});el('text',{x:left-9,y:Y+4,'text-anchor':'end',class:'daily-axis'},Math.round(val).toLocaleString());}
+ const path=rows.map((r,i)=>`${i?'L':'M'}${x(i).toFixed(2)},${y(r.count).toFixed(2)}`).join(' ');
+ el('path',{d:path,class:'daily-line'});
+ const step=Math.max(1,Math.ceil(rows.length/7));
+ rows.forEach((r,i)=>{if(i%step===0||i===rows.length-1){el('text',{x:x(i),y:h-16,'text-anchor':'middle',class:'daily-axis'},r.date.slice(5));}
+ const dot=el('circle',{cx:x(i),cy:y(r.count),r:rows.length>90?2:3,class:'daily-dot'});let title=document.createElementNS(ns,'title');title.textContent=`${r.date}: ${fmt(r.count)} reports`;dot.appendChild(title);});
+ host.appendChild(svg);host.setAttribute('aria-label',`Daily report totals in UTC: ${rows.map(r=>r.date+' '+r.count).join(', ')}`);
+ const total=rows.reduce((sum,r)=>sum+r.count,0);$('dailySummary').textContent=`${fmt(total)} reports across ${fmt(rows.length)} UTC calendar days · Updated ${dailyData.updated_at?new Date(dailyData.updated_at).toLocaleString():'—'}`;
+ renderProtocols(rows);
+}
+// This historical chart is intentionally independent of the live 5m–24h selector.
+// It uses the same 7/15/30/all historical selection as Total reports by day.
+function renderProtocols(dailyRows){
+ const host=$('protocolChart'),legend=$('protocolLegend'),summary=$('protocolSummary');
+ host.replaceChildren();legend.replaceChildren();
+ if(!dailyData){summary.textContent='Protocol history not available yet.';return;}
+ const counts=dailyData.protocol_counts||{};
+ const today=new Date().toISOString().slice(0,10);
+ const known=Object.keys(dailyData.days||{}).sort();
+ const first=known[0]||today;
+ const from=dailySelected?new Date(Date.now()-(dailySelected-1)*86400000).toISOString().slice(0,10):first;
+ const dates=dailyRows?dailyRows.map(r=>r.date):[];
+ if(!dates.length){for(let d=new Date(from+'T00:00:00Z'),end=new Date(today+'T00:00:00Z');d<=end;d.setUTCDate(d.getUTCDate()+1))dates.push(d.toISOString().slice(0,10));}
+ const totals=new Map();
+ for(const date of dates){for(const [mode,count] of Object.entries(counts[date]||{})){const n=Number(count);if(Number.isFinite(n)&&n>0)totals.set(mode,(totals.get(mode)||0)+n);}}
+ const top=[...totals.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5);
+ if(!top.length){summary.textContent='No historical protocol breakdown available yet. The collector will begin recording it as new reports arrive.';return;}
+ const colors=['#4fe0bd','#58a6ff','#ffbd69','#d49aff','#ff788a'];
+ const modes=top.map(([mode])=>mode);
+ // Keep legend selections when changing historical date ranges.
+ for(let j=0;j<modes.length;j++){
+  const mode=modes[j],button=document.createElement('button');button.type='button';button.className=hiddenProtocols.has(mode)?'off':'';
+  button.setAttribute('aria-pressed',String(!hiddenProtocols.has(mode)));
+  const swatch=document.createElement('span');swatch.className='legend-swatch';swatch.style.backgroundColor=colors[j];
+  button.append(swatch,document.createTextNode(mode));
+  button.addEventListener('click',()=>{if(hiddenProtocols.has(mode))hiddenProtocols.delete(mode);else hiddenProtocols.add(mode);renderProtocols(dailyRows);});legend.appendChild(button);
+ }
+ const active=top.filter(([mode])=>!hiddenProtocols.has(mode));
+ const w=940,h=290,left=58,right=18,topMargin=16,bottom=47,pw=w-left-right,ph=h-topMargin-bottom;
+ const max=Math.max(1,...dates.flatMap(date=>active.map(([mode])=>Number(counts[date]?.[mode]||0))));
+ const x=i=>left+(dates.length===1?pw/2:i*pw/(dates.length-1));
+ const y=n=>topMargin+ph-Math.max(0,n)/max*ph;
+ const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('class','daily-chart');
+ const el=(tag,attrs={},content)=>{const node=document.createElementNS(ns,tag);for(const [key,value] of Object.entries(attrs))node.setAttribute(key,value);if(content!==undefined)node.textContent=content;svg.appendChild(node);return node;};
+ for(let i=0;i<=4;i++){const v=max*i/4,Y=y(v);el('line',{x1:left,y1:Y,x2:w-right,y2:Y,class:'daily-grid'});el('text',{x:left-9,y:Y+4,'text-anchor':'end',class:'daily-axis'},Math.round(v).toLocaleString());}
+ const step=Math.max(1,Math.ceil(dates.length/7));
+ dates.forEach((date,i)=>{if(i%step===0||i===dates.length-1)el('text',{x:x(i),y:h-16,'text-anchor':'middle',class:'daily-axis'},date.slice(5));});
+ for(let j=0;j<top.length;j++){
+  const [mode]=top[j];if(hiddenProtocols.has(mode))continue;
+  const path=dates.map((date,i)=>`${i?'L':'M'}${x(i).toFixed(2)},${y(Number(counts[date]?.[mode]||0)).toFixed(2)}`).join(' ');
+  el('path',{d:path,fill:'none',stroke:colors[j],'stroke-width':2.6,'stroke-linecap':'round','stroke-linejoin':'round'});
+  dates.forEach((date,i)=>{const n=Number(counts[date]?.[mode]||0);const dot=el('circle',{cx:x(i),cy:y(n),r:dates.length>90?1.8:3,fill:colors[j]});const title=document.createElementNS(ns,'title');title.textContent=`${date} · ${mode}: ${fmt(n)} reports`;dot.appendChild(title);});
+ }
+ host.appendChild(svg);
+ host.setAttribute('aria-label',`Top protocols daily reports: ${top.map(([mode])=>mode).join(', ')}`);
+ summary.textContent=`Top 5 across ${fmt(dates.length)} UTC calendar days · ${top.map(([mode,n])=>mode+': '+fmt(n)).join(' · ')}`;
+}
+async function refreshDaily(){try{let response=await fetch(`data/daily.json?v=${Date.now()}`,{cache:'no-store'});if(!response.ok)throw Error(`HTTP ${response.status}`);let data=await response.json();if(!data.days||typeof data.days!=='object')throw Error('Invalid daily history');dailyData=data;renderDaily();}catch(e){$('dailySummary').textContent=`Daily history unavailable: ${e.message}`;}}
+for(const [label,days] of DAILY_WINDOWS){let b=document.createElement('button');b.textContent=label;b.dataset.days=days;b.addEventListener('click',()=>{dailySelected=days;renderDaily();});$('dailyPeriods').appendChild(b);}
+
 async function refresh(){try{const resp=await fetch(`data/reports.json?v=${Date.now()}`,{cache:'no-store'});if(!resp.ok)throw Error(`HTTP ${resp.status}`);let data=await resp.json();if(!Array.isArray(data.reports))throw Error('Invalid dataset');snapshot=data;let stamp=data.updated_at?new Date(data.updated_at).toLocaleString():'not yet available';let warning=data.possibly_truncated?' · WARNING: API report limit reached; results may be incomplete':'';$('status').textContent=`Data updated: ${stamp} · ${fmt(data.reports.length)} reports in snapshot${warning}`;renderHourly();render();}catch(err){$('status').textContent=`Unable to load data: ${err.message}. ${snapshot?'Showing cached page data.':'Run the GitHub Action to generate the snapshot.'}`;}}
 for(const [label,seconds] of WINDOWS){let b=document.createElement('button');b.textContent=label;b.dataset.seconds=seconds;b.addEventListener('click',()=>{selected=seconds;render();});$('periods').appendChild(b);}
-refresh();setInterval(refresh,300000);setInterval(render,30000);setInterval(renderHourly,60000);
+refresh();refreshDaily();setInterval(refresh,300000);setInterval(refreshDaily,300000);setInterval(render,30000);setInterval(renderHourly,60000);
 </script></body></html>
