@@ -6,10 +6,12 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from collections import Counter
 from pathlib import Path
 
 API = 'https://retrieve.pskreporter.info/query'
 OUT = Path(__file__).parent / 'data' / 'reports.json'
+DAILY = Path(__file__).parent / 'data' / 'daily.json'
 MIN_HZ, MAX_HZ = 26_000_000, 27_999_999
 WINDOW = 86400
 LIMIT = 100000
@@ -43,6 +45,44 @@ def main():
             raise ValueError('Existing reports.json has an invalid reports array')
     else:
         old_reports = []
+
+    # Preserve daily totals and per-protocol counts across collector runs.
+    # Existing archives may have totals but no historical mode breakdown.
+    if DAILY.exists():
+        archive = json.loads(DAILY.read_text(encoding='utf-8'))
+        daily = {str(k): int(v) for k, v in archive.get('days', {}).items()}
+        protocol_counts = {
+            str(day): Counter({str(mode): int(count) for mode, count in modes.items()})
+            for day, modes in archive.get('protocol_counts', {}).items()
+        }
+    else:
+        daily = {}
+        protocol_counts = {}
+        for r in old_reports:
+            try:
+                date = datetime.fromtimestamp(int(r['t']), timezone.utc).date().isoformat()
+                mode = str(r['m'])
+                daily[date] = daily.get(date, 0) + 1
+                protocol_counts.setdefault(date, Counter())[mode] += 1
+            except (KeyError, ValueError, TypeError, OverflowError):
+                continue
+
+    # On upgrade, seed breakdown for days not yet represented, using only
+    # available rolling reports. Earlier reports cannot be reconstructed.
+    for r in old_reports:
+        try:
+            date = datetime.fromtimestamp(int(r['t']), timezone.utc).date().isoformat()
+            if date in daily and date not in protocol_counts:
+                protocol_counts[date] = Counter()
+        except (KeyError, ValueError, TypeError, OverflowError):
+            continue
+    if DAILY.exists() and not archive.get('protocol_counts'):
+        for r in old_reports:
+            try:
+                date = datetime.fromtimestamp(int(r['t']), timezone.utc).date().isoformat()
+                protocol_counts.setdefault(date, Counter())[str(r['m'])] += 1
+            except (KeyError, ValueError, TypeError, OverflowError):
+                continue
 
     reports = {}
     for r in old_reports:
@@ -78,6 +118,9 @@ def main():
         report = {'t': ts, 'f': hz, 'm': mode, 'id': report_id}
         if report_id not in reports:
             added += 1
+            date = datetime.fromtimestamp(ts, timezone.utc).date().isoformat()
+            daily[date] = daily.get(date, 0) + 1
+            protocol_counts.setdefault(date, Counter())[mode] += 1
         reports[report_id] = report
 
     ordered = sorted(reports.values(), key=lambda r: (r['t'], r['f'], r['m']))
@@ -96,6 +139,16 @@ def main():
     tmp = OUT.with_suffix('.json.tmp')
     tmp.write_text(json.dumps(payload, separators=(',', ':')), encoding='utf-8')
     tmp.replace(OUT)
+    daily_payload = {
+        'updated_at': payload['updated_at'],
+        'timezone': 'UTC',
+        'days': dict(sorted(daily.items())),
+        'protocol_counts': {day: dict(sorted(counts.items())) for day, counts in sorted(protocol_counts.items())},
+        'top_5_protocols': {day: [{'mode': mode, 'reports': count} for mode, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:5]] for day, counts in sorted(protocol_counts.items())},
+    }
+    daily_tmp = DAILY.with_suffix('.json.tmp')
+    daily_tmp.write_text(json.dumps(daily_payload, separators=(',', ':')), encoding='utf-8')
+    daily_tmp.replace(DAILY)
     print(f'Saved {len(ordered)} rolling 24h reports ({added} new; {returned} returned by API)')
 
 
