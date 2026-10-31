@@ -22,15 +22,19 @@ const ago=t=>{if(!t)return '—';let s=Math.max(0,Math.floor(Date.now()/1000-t))
 const td=(value,cls='')=>{let el=document.createElement('td');el.textContent=value;if(cls)el.className=cls;return el;};
 function row(body,values){let tr=document.createElement('tr');values.forEach(([v,c])=>tr.appendChild(td(v,c)));body.appendChild(tr);}
 function empty(body,colspan){let tr=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=colspan;cell.className='empty';cell.textContent='No reception reports in this period.';tr.appendChild(cell);body.appendChild(tr);}
+function renderHourly(){
+ if(!snapshot)return;
+ const now=Math.floor(Date.now()/1000);
+ const hourly=Array(24).fill(0);for(const r of snapshot.reports){if(Number.isFinite(r.t)&&r.t>=now-86400&&r.t<=now+60)hourly[new Date(r.t*1000).getHours()]++;}
+ const hourChart=$('hourChart');hourChart.replaceChildren();const maxHour=Math.max(1,...hourly);
+ hourly.forEach((count,h)=>{const slot=document.createElement('div');slot.className='hour-slot';const bar=document.createElement('div');bar.className='hour-bar';bar.style.height=count?`${Math.max(2,count/maxHour*100)}%`:'2px';bar.style.opacity=count?'1':'.18';const label=document.createElement('span');label.className='hour-label';label.textContent=String(h).padStart(2,'0');slot.title=`${String(h).padStart(2,'0')}:00–${String((h+1)%24).padStart(2,'0')}:00 · ${fmt(count)} reports`;slot.append(bar,label);hourChart.appendChild(slot);});
+ hourChart.setAttribute('aria-label',`Reception reports by local hour: ${hourly.map((n,h)=>`${h}:00 ${n}`).join(', ')}`);
+}
 function render(){
  document.querySelectorAll('.periods button').forEach(b=>{b.classList.toggle('active',+b.dataset.seconds===selected);b.setAttribute('aria-pressed',String(+b.dataset.seconds===selected));});
  if(!snapshot)return;
  const now=Math.floor(Date.now()/1000), reports=snapshot.reports.filter(r=>Number.isFinite(r.t)&&r.t>=now-selected&&r.t<=now+60);
  const modes=new Map(),freq=new Map();let latest=0;
- const hourly=Array(24).fill(0);for(const r of snapshot.reports){if(Number.isFinite(r.t)&&r.t>=now-86400&&r.t<=now+60)hourly[new Date(r.t*1000).getHours()]++;}
- const hourChart=$('hourChart');hourChart.replaceChildren();const maxHour=Math.max(1,...hourly);
- hourly.forEach((count,h)=>{const slot=document.createElement('div');slot.className='hour-slot';const bar=document.createElement('div');bar.className='hour-bar';bar.style.height=`${count/maxHour*100}%`;const label=document.createElement('span');label.className='hour-label';label.textContent=String(h).padStart(2,'0');slot.title=`${String(h).padStart(2,'0')}:00–${String((h+1)%24).padStart(2,'0')}:00 · ${fmt(count)} reports`;slot.append(bar,label);hourChart.appendChild(slot);});
- hourChart.setAttribute('aria-label',`Reception reports by local hour: ${hourly.map((n,h)=>`${h}:00 ${n}`).join(', ')}`);
  for(const r of reports){latest=Math.max(latest,r.t);let m=modes.get(r.m)||{count:0,last:0};m.count++;m.last=Math.max(m.last,r.t);modes.set(r.m,m);
  // USB channel convention: floor to the lower 5 kHz boundary.
  let channel=Math.floor(r.f/5000)*5000,key=`${r.m}\u0000${channel}`,v=freq.get(key)||{mode:r.m,channel,count:0,last:0};v.count++;v.last=Math.max(v.last,r.t);freq.set(key,v);}
@@ -43,7 +47,7 @@ function render(){
  for(const v of [...freq.values()].sort((a,b)=>b.count-a.count||a.mode.localeCompare(b.mode)||a.channel-b.channel)){
  row($('freqRows'),[[v.mode,''],[(v.channel/1e6).toFixed(3)+' MHz',''],[fmt(v.count),'num'],[pct(v.count,modes.get(v.mode).count),'num'],[ago(v.last),'num']]);}
 }
-async function refresh(){try{const resp=await fetch(`data/reports.json?v=${Date.now()}`,{cache:'no-store'});if(!resp.ok)throw Error(`HTTP ${resp.status}`);let data=await resp.json();if(!Array.isArray(data.reports))throw Error('Invalid dataset');snapshot=data;let stamp=data.updated_at?new Date(data.updated_at).toLocaleString():'not yet available';let warning=data.possibly_truncated?' · WARNING: API report limit reached; results may be incomplete':'';$('status').textContent=`Data updated: ${stamp} · ${fmt(data.reports.length)} reports in snapshot${warning}`;render();}catch(err){$('status').textContent=`Unable to load data: ${err.message}. ${snapshot?'Showing cached page data.':'Run the GitHub Action to generate the snapshot.'}`;}}
+async function refresh(){try{const resp=await fetch(`data/reports.json?v=${Date.now()}`,{cache:'no-store'});if(!resp.ok)throw Error(`HTTP ${resp.status}`);let data=await resp.json();if(!Array.isArray(data.reports))throw Error('Invalid dataset');snapshot=data;let stamp=data.updated_at?new Date(data.updated_at).toLocaleString():'not yet available';let warning=data.possibly_truncated?' · WARNING: API report limit reached; results may be incomplete':'';$('status').textContent=`Data updated: ${stamp} · ${fmt(data.reports.length)} reports in snapshot${warning}`;renderHourly();render();}catch(err){$('status').textContent=`Unable to load data: ${err.message}. ${snapshot?'Showing cached page data.':'Run the GitHub Action to generate the snapshot.'}`;}}
 for(const [label,seconds] of WINDOWS){let b=document.createElement('button');b.textContent=label;b.dataset.seconds=seconds;b.addEventListener('click',()=>{selected=seconds;render();});$('periods').appendChild(b);}
-refresh();setInterval(refresh,300000);setInterval(render,30000);
+refresh();setInterval(refresh,300000);setInterval(render,30000);setInterval(renderHourly,60000);
 </script></body></html>
