@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>11m Digital Mode Analyzer</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e6edf7;background:#0b1220}*{box-sizing:border-box}body{margin:0}main{max-width:1160px;margin:auto;padding:34px 20px 70px}h1{font-size:clamp(1.9rem,4vw,3rem);margin:0 0 6px;letter-spacing:-.04em}h2{font-size:1.1rem;margin:0 0 18px}p{color:#a9b8cd}.eyebrow{color:#57d9c2;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;font-weight:700}.subtitle{margin:0 0 26px}.periods{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}.periods button{border:1px solid #34445e;background:#162338;color:#d6e3f4;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:650}.periods button.active{background:#48d4bd;color:#062c29;border-color:#48d4bd}.status{min-height:26px;color:#a9b8cd;margin-bottom:15px;font-size:.89rem}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.card,.panel{background:#121e31;border:1px solid #283a54;border-radius:15px}.card{padding:19px}.card span{font-size:.83rem;color:#a9b8cd}.card strong{display:block;font-size:1.8rem;margin-top:9px}.panel{padding:22px;margin-bottom:18px;overflow:auto}.barrow{display:grid;grid-template-columns:120px 1fr 75px;gap:12px;align-items:center;margin:12px 0}.track{height:13px;background:#26374f;border-radius:20px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#3a9cdb,#4fe0bd);border-radius:20px}.barrow b{text-align:right}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;font-size:.77rem;color:#a9b8cd;text-transform:uppercase;letter-spacing:.06em}td,th{padding:12px 11px;border-bottom:1px solid #293950}td.num,th.num{text-align:right}tr:last-child td{border-bottom:0}.muted{color:#a9b8cd}.empty{padding:20px;color:#a9b8cd}.note{font-size:.82rem;line-height:1.6}footer{font-size:.8rem;color:#8fa2bd;margin-top:25px}@media(max-width:750px){.metrics{grid-template-columns:repeat(2,1fr)}.barrow{grid-template-columns:70px 1fr 55px}.panel{padding:15px}}@media(max-width:420px){.metrics{grid-template-columns:1fr 1fr}.card{padding:12px}.card strong{font-size:1.35rem}}
+</style></head><body><main>
+<div class="eyebrow">PSK Reporter · 11-metre band</div><h1>11m Digital Mode Analyzer</h1><p class="subtitle">Digital reception activity across 26.000–27.999 MHz · 5 kHz USB channel grouping</p>
+<nav class="periods" aria-label="Time window" id="periods"></nav><div class="status" id="status" role="status">Loading latest reception reports…</div>
+<section class="metrics"><div class="card"><span>Reception reports</span><strong id="total">—</strong></div><div class="card"><span>Digital modes</span><strong id="modes">—</strong></div><div class="card"><span>Active channels</span><strong id="channels">—</strong></div><div class="card"><span>Latest report</span><strong id="latest">—</strong></div></section>
+<section class="panel"><h2>Mode activity</h2><div id="bars"></div></section>
+<section class="panel"><h2>Digital mode statistics</h2><table><thead><tr><th>Mode</th><th class="num">Reports</th><th class="num">Share</th><th class="num">Last heard</th></tr></thead><tbody id="modeRows"></tbody></table></section>
+<section class="panel"><h2>Frequency activity by mode</h2><table><thead><tr><th>Mode</th><th>USB channel</th><th class="num">Reports</th><th class="num">Mode share</th><th class="num">Last heard</th></tr></thead><tbody id="freqRows"></tbody></table></section>
+<p class="note">Channel grouping uses the lower 5 kHz boundary, not nearest-frequency rounding: for example, 27.268 MHz → 27.265 MHz. Report counts represent reception spots, not unique stations or transmissions. Data freshness depends on PSK Reporter and the scheduled GitHub workflow; updates are not guaranteed to run exactly every five minutes.</p><footer>Source: PSK Reporter · Times shown relative to your device clock · Data refresh attempted every 5 minutes while the page is open.</footer>
+</main><script>
+'use strict';
+const WINDOWS=[['5 min',300],['15 min',900],['30 min',1800],['1 h',3600],['3 h',10800],['6 h',21600],['12 h',43200],['24 h',86400]];
+let selected=300,snapshot=null;
+const $=id=>document.getElementById(id);
+const fmt=n=>n.toLocaleString();
+const pct=(n,d)=>d?`${(100*n/d).toFixed(2)}%`:'0.00%';
+const ago=t=>{if(!t)return '—';let s=Math.max(0,Math.floor(Date.now()/1000-t));return s<60?'<1m':s<3600?`${Math.floor(s/60)}m`:s<86400?`${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`:`${Math.floor(s/86400)}d`;};
+const td=(value,cls='')=>{let el=document.createElement('td');el.textContent=value;if(cls)el.className=cls;return el;};
+function row(body,values){let tr=document.createElement('tr');values.forEach(([v,c])=>tr.appendChild(td(v,c)));body.appendChild(tr);}
+function empty(body,colspan){let tr=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=colspan;cell.className='empty';cell.textContent='No reception reports in this period.';tr.appendChild(cell);body.appendChild(tr);}
+function render(){
+ document.querySelectorAll('.periods button').forEach(b=>{b.classList.toggle('active',+b.dataset.seconds===selected);b.setAttribute('aria-pressed',String(+b.dataset.seconds===selected));});
+ if(!snapshot)return;
+ const now=Math.floor(Date.now()/1000), reports=snapshot.reports.filter(r=>Number.isFinite(r.t)&&r.t>=now-selected&&r.t<=now+60);
+ const modes=new Map(),freq=new Map();let latest=0;
+ for(const r of reports){latest=Math.max(latest,r.t);let m=modes.get(r.m)||{count:0,last:0};m.count++;m.last=Math.max(m.last,r.t);modes.set(r.m,m);
+ // USB channel convention: floor to the lower 5 kHz boundary.
+ let channel=Math.floor(r.f/5000)*5000,key=`${r.m}\u0000${channel}`,v=freq.get(key)||{mode:r.m,channel,count:0,last:0};v.count++;v.last=Math.max(v.last,r.t);freq.set(key,v);}
+ $('total').textContent=fmt(reports.length);$('modes').textContent=fmt(modes.size);$('channels').textContent=fmt(new Set([...freq.values()].map(v=>v.channel)).size);$('latest').textContent=ago(latest);
+ const sortedModes=[...modes].sort((a,b)=>b[1].count-a[1].count||a[0].localeCompare(b[0]));
+ $('modeRows').replaceChildren();$('freqRows').replaceChildren();$('bars').replaceChildren();
+ if(!reports.length){empty($('modeRows'),4);empty($('freqRows'),5);$('bars').textContent='No reports for the selected period.';return;}
+ for(const [mode,v] of sortedModes){row($('modeRows'),[[mode,''],[fmt(v.count),'num'],[pct(v.count,reports.length),'num'],[ago(v.last),'num']]);
+ const line=document.createElement('div');line.className='barrow';const label=document.createElement('span');label.textContent=mode;const track=document.createElement('div');track.className='track';const fill=document.createElement('div');fill.className='fill';fill.style.width=`${100*v.count/reports.length}%`;track.appendChild(fill);const count=document.createElement('b');count.textContent=fmt(v.count);line.append(label,track,count);$('bars').appendChild(line);}
+ for(const v of [...freq.values()].sort((a,b)=>b.count-a.count||a.mode.localeCompare(b.mode)||a.channel-b.channel)){
+ row($('freqRows'),[[v.mode,''],[(v.channel/1e6).toFixed(3)+' MHz',''],[fmt(v.count),'num'],[pct(v.count,modes.get(v.mode).count),'num'],[ago(v.last),'num']]);}
+}
+async function refresh(){try{const resp=await fetch(`data/reports.json?v=${Date.now()}`,{cache:'no-store'});if(!resp.ok)throw Error(`HTTP ${resp.status}`);let data=await resp.json();if(!Array.isArray(data.reports))throw Error('Invalid dataset');snapshot=data;let stamp=data.updated_at?new Date(data.updated_at).toLocaleString():'not yet available';let warning=data.possibly_truncated?' · WARNING: API report limit reached; results may be incomplete':'';$('status').textContent=`Data updated: ${stamp} · ${fmt(data.reports.length)} reports in snapshot${warning}`;render();}catch(err){$('status').textContent=`Unable to load data: ${err.message}. ${snapshot?'Showing cached page data.':'Run the GitHub Action to generate the snapshot.'}`;}}
+for(const [label,seconds] of WINDOWS){let b=document.createElement('button');b.textContent=label;b.dataset.seconds=seconds;b.addEventListener('click',()=>{selected=seconds;render();});$('periods').appendChild(b);}
+refresh();setInterval(refresh,300000);setInterval(render,30000);
+</script></body></html>
