@@ -1,1 +1,1 @@
-{"updated_at":null,"timezone":"UTC","days":{},"protocol_counts":{},"top_5_protocols":{}}
+{"updated_at":"2026-11-04T15:38:30.859481+00:00","timezone":"UTC","days":{"2026-11-04":1710},"protocol_counts":{"2026-11-03":{"FT8":243,"JS8":16},"2026-11-04":{"FT8":3284,"JS8":143}},"top_5_protocols":{"2026-11-03":[{"mode":"FT8","reports":243},{"mode":"JS8","reports":16}],"2026-11-04":[{"mode":"FT8","reports":3284},{"mode":"JS8","reports":143}]}}
